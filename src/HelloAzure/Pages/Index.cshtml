@@ -1,0 +1,17 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Hello World";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Hello World</h1>
+    <p class="lead">Current date &amp; time: <strong>@Model.CurrentTime.ToString("yyyy-MM-dd HH:mm:ss zzz")</strong> <span class="text-muted">(@Model.TimeZoneName)</span></p>
+    <p>Build number: <strong>@Model.BuildNumber</strong></p>
+</div>
+
+<div class="text-center mt-4">
+    <form method="post" asp-page-handler="LogError">
+        <button type="submit" class="btn btn-danger">Log Error</button>
+    </form>
+</div>
