@@ -136,20 +136,29 @@ Currently `BUILD_NUMBER` is supplied manually via `--build-arg BUILD_NUMBER=1`. 
 
 ### Workflow Pattern
 
+Authentication uses the federated identity described in `federated-identity.md` —
+`azure/login@v2` with `id-token: write`, no stored secrets.
+
 ```yaml
 env:
-  ACR: myregistry.azurecr.io
   IMAGE: helloazure
   BUILD: ${{ github.run_number }}
 
 steps:
+  - uses: azure/login@v2
+    with:
+      client-id:       ${{ vars.AZURE_CLIENT_ID }}
+      tenant-id:       ${{ vars.AZURE_TENANT_ID }}
+      subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
   - name: Build and push to ACR
     run: |
-      docker build --build-arg BUILD_NUMBER=${{ env.BUILD }} -t ${{ env.ACR }}/${{ env.IMAGE }}:${{ env.BUILD }} .
-      docker push ${{ env.ACR }}/${{ env.IMAGE }}:${{ env.BUILD }}
+      az acr login --name ${{ vars.ACR_NAME }}
+      docker build --build-arg BUILD_NUMBER=${{ env.BUILD }} -t ${{ vars.ACR_NAME }}.azurecr.io/${{ env.IMAGE }}:${{ env.BUILD }} .
+      docker push ${{ vars.ACR_NAME }}.azurecr.io/${{ env.IMAGE }}:${{ env.BUILD }}
 
-  - name: Deploy to dev
-    run: az containerapp update --name helloazure-dev --image ${{ env.ACR }}/${{ env.IMAGE }}:${{ env.BUILD }}
+  - name: Deploy
+    run: az containerapp update --name <dev-or-prod-app> --image ${{ vars.ACR_NAME }}.azurecr.io/${{ env.IMAGE }}:${{ env.BUILD }}
 ```
 
 ### Tagging Strategy
@@ -173,16 +182,25 @@ az containerapp update --name helloazure-dev --image myregistry.azurecr.io/hello
 
 ### Dev vs. Prod Environments
 
-Two workflow jobs (or two workflow files):
-- **Dev**: triggers on every push to `main`. Deploys the new tag automatically.
-- **Prod**: triggers on a tagged release (e.g. `v1.0.0`). Deploys the same image tag that was validated in dev.
+Branch-triggered, not tag-triggered: a merge into a branch deploys straight to that
+branch's environment, each built fresh from that branch's own code (not a promoted
+artifact carried over from dev).
 
-Both pass `github.run_number` as the build number. The Dockerfile requires no changes — the `ARG`/`ENV` pattern already supports this.
+- **Dev**: triggers on push to `develop`. Deploys to `helloazure-dev`.
+- **Prod**: triggers on push to `main`. Deploys to `helloazure-prod`.
+
+One workflow file, one job, triggered on `push: branches: [main, develop]`, with a
+step that picks the target container app name from `github.ref`. Both branches pass
+`github.run_number` as the build number. The Dockerfile requires no changes — the
+`ARG`/`ENV` pattern already supports this.
+
+Each branch has its own federated credential (see `federated-identity.md`) so a push
+to any other branch can't authenticate at all.
 
 ### Infrastructure Still to Build
 
-- Azure Container Registry (ACR)
-- Azure Web App or Azure Container Apps environment (dev + prod)
-- GitHub Actions workflow files (`.github/workflows/`)
-- Service principal or managed identity for GitHub Actions → Azure auth
-- ACR credentials stored as GitHub Actions secrets
+x Azure Container Registry (ACR)
+x Azure Container Apps environment (dev + prod) - `infra/standup.ps1`
+x Service principal + federated identity for GitHub Actions → Azure auth (main and
+  develop) - `infra/standup.ps1`, `federated-identity.md`
+- GitHub Actions workflow file (`.github/workflows/`)
