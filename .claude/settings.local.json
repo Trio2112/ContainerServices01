@@ -2,7 +2,13 @@
   "permissions": {
     "allow": [
       "Bash(docker build *)",
-      "Bash(Start-Process \"C:\\\\Program Files\\\\Docker\\\\Docker\\\\Docker Desktop.exe\")"
+      "Bash(Start-Process \"C:\\\\Program Files\\\\Docker\\\\Docker\\\\Docker Desktop.exe\")",
+      "Bash(az containerapp show *)",
+      "Bash(az containerapp revision list *)",
+      "Bash(git status *)",
+      "Bash(az role definition list *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }
