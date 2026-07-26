@@ -103,8 +103,16 @@ it*). The proof is the live OIDC handshake, so it's fine that they live in this 
 | Trusted issuer | `https://token.actions.githubusercontent.com` |
 | Trusted subjects | `repo:Trio2112/ContainerServices01:ref:refs/heads/main` (→ prod), `repo:Trio2112/ContainerServices01:ref:refs/heads/develop` (→ dev) |
 | Audience | `api://AzureADTokenExchange` |
-| Role granted | `AcrPush` |
-| Role scope | the `acrhelloazure01` registry only (not the whole subscription) |
+| Roles granted | `AcrPush` on the registry; `Container Apps Contributor` on `helloazure-dev` and `helloazure-prod` individually |
+| Role scopes | each resource individually (not the resource group or subscription) |
+
+**Gotcha:** without the `Container Apps Contributor` grants, `az containerapp update`
+in the workflow fails with `ERROR: The containerapp 'helloazure-dev' does not exist` -
+which looks like a missing-resource problem but is actually a missing-permission one.
+ARM returns 404 rather than 403 when a principal has zero role assignments on a
+resource, so it doesn't confirm the resource's existence to an unauthorized caller.
+If a future `az containerapp update`/`create`/`delete` call from CI reports a resource
+"doesn't exist" that you can otherwise see and reach, check role assignments first.
 
 ### The CLI commands that created it
 

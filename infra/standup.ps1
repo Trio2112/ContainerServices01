@@ -191,6 +191,24 @@ az role assignment create `
     --scope $acrId `
     --output none
 
+# --- Container Apps Contributor role assignment (re-granted every rebuild) --
+# Without this, `az containerapp update` in the GitHub Actions workflow fails
+# with "The containerapp 'x' does not exist" - not a permissions error, since
+# ARM returns 404 rather than 403 when a principal has zero role assignments
+# on a resource, to avoid confirming its existence to unauthorized callers.
+# Scoped to each container app individually (not the resource group or
+# environment) for least privilege, same as the AcrPull grants above.
+Write-Host "Granting Container Apps Contributor on the dev/prod apps to the service principal..."
+foreach ($appName in @($ContainerAppDevName, $ContainerAppProdName)) {
+    $appId2 = az containerapp show --name $appName --resource-group $ResourceGroupName --query id --output tsv
+    az role assignment create `
+        --assignee-object-id $spObjectId `
+        --assignee-principal-type ServicePrincipal `
+        --role "Container Apps Contributor" `
+        --scope $appId2 `
+        --output none
+}
+
 # --- GitHub repo variables --------------------------------------------------
 # These identify the SP to the azure/login action. They are NOT secrets - the
 # proof of identity is the live OIDC exchange, not these ids.
